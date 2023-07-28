@@ -161,3 +161,7 @@ cython_debug/
 compass-*.*
 *.wav
 *.mp3
+*.m4a
+
+gcloud.json
+out.txt
