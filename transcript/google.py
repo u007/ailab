@@ -21,7 +21,7 @@ def get_sample_rate(audio_file):
 credentials_path = "gcloud.json"
 client = speech.SpeechClient.from_service_account_json(credentials_path)
 
-audio_path = "mc3.wav"
+audio_path = "mc1.wav"
 
 # Configure the speaker diarization
 diarization_config = speech.SpeakerDiarizationConfig(enable_speaker_diarization=True, min_speaker_count=3, max_speaker_count=3)
@@ -52,12 +52,12 @@ last_speaker = -1
 current_words = ""
 for word_info in words_info:
     if last_speaker > -1 and last_speaker != word_info.speaker_tag:
-        print(f"Speaker {word_info.speaker_tag}: {current_words}")
+        print(f"Speaker {last_speaker}: {current_words}")
         current_words = word_info.word
-        last_speaker = word_info.speaker_tag
     else:
         current_words += " " + word_info.word
-        last_speaker = word_info.speaker_tag
+    
+    last_speaker = word_info.speaker_tag
 
 if current_words != "":
-    print(f"Speaker {word_info.speaker_tag}: {current_words}")
+    print(f"Speaker {last_speaker}: {current_words}")
