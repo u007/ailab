@@ -11,10 +11,10 @@ def convert_to_png(file: str):
   # Store path of the image in the variable input_path
   return new_name
 
-input_file = 'compass-rose-h.jpg'
+input_file = 'principal-thomas.png'
 # png_file = convert_to_png(input_file)
 # Store path of the output image in the variable output_path
-output_path = 'compass-rose-h.clean2.png'
+output_path = 'principal-thomas.clean.png'
   
 # Processing the image
 input = Image.open(input_file)
