@@ -42,7 +42,6 @@ config = RecognitionConfig(
         enable_automatic_punctuation=True,
         diarization_config=diarization_config,
     ),
-    # diarization_config=diarization_config  # Add the diarization config to the recognition config
 )
 
 # Read the audio file
