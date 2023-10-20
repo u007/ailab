@@ -1,11 +1,11 @@
 from pydub import AudioSegment
 import io
+import os
 import openai
 from pyannote.audio import Pipeline
 pipeline = Pipeline.from_pretrained(
     "pyannote/speaker-diarization-3.0",
-    use_auth_token="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")
-
+    use_auth_token=os.environ.HF_TOKEN)
 
 def extract_audio_chunk_to_file_object(input_file, start_time, end_time, output_file):
     """
