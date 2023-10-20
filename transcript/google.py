@@ -10,26 +10,14 @@ def get_sample_rate(audio_file):
     with wave.open(audio_file, "rb") as wav:
         return wav.getframerate()
 
-# import print_env
-# with wave.open(wav_file, "rb") as wav:
-#     num_channels = wav.getnchannels() 
-#     sample_width = wav.getsampwidth()
-#     frame_rate = wav.getframerate()
-#     num_frames = wav.getnframes()
-
-#     print(f"Number of channels: {num_channels}")
-#     print(f"Sample width: {sample_width} bytes") 
-#     print(f"Frame rate: {frame_rate} Hz")
-#     print(f"Number of frames: {num_frames}")
-# client = speech.SpeechClient()
-credentials_path = "gcloud.json"
+# export GOOGLE_APPLICATION_CREDENTIALS=xyz-xxx-xxxx.json to run this
 client = SpeechClient()
 
 # audio_path = "mc1.wav"
 audio_path = "mc2.wav"
 
 # Configure the speaker diarization
-diarization_config = SpeakerDiarizationConfig(min_speaker_count=3, max_speaker_count=3)
+# diarization_config = SpeakerDiarizationConfig(min_speaker_count=3, max_speaker_count=3)
 sample_rate = get_sample_rate(audio_path)
 # Configure the recognition
 config = RecognitionConfig(
@@ -40,7 +28,7 @@ config = RecognitionConfig(
     # https://cloud.google.com/python/docs/reference/speech/latest/google.cloud.speech_v2.types.RecognitionFeatures
     features=RecognitionFeatures(
         enable_automatic_punctuation=True,
-        diarization_config=diarization_config,
+        # diarization_config=diarization_config,
     ),
 )
 
@@ -59,26 +47,3 @@ response = client.recognize(request=request)
 
 for result in response.results:
     print(f"Transcript: {result.alternatives[0].transcript}")
-
-# # Perform the speech recognition
-# response = client.recognize(config=recognition_config, audio={"content": content})
-
-# print("results: ", response.results)
-# # Print the results
-# result = response.results[-1]
-# words_info = result.alternatives[0].words
-
-# # Printing out the output:
-# last_speaker = -1
-# current_words = ""
-# for word_info in words_info:
-#     if last_speaker > -1 and last_speaker != word_info.speaker_tag:
-#         print(f"Speaker {last_speaker}: {current_words}")
-#         current_words = word_info.word
-#     else:
-#         current_words += " " + word_info.word
-    
-#     last_speaker = word_info.speaker_tag
-
-# if current_words != "":
-#     print(f"Speaker {last_speaker}: {current_words}")
