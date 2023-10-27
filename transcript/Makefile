@@ -11,3 +11,7 @@ video:
 
 video2:
 	HF_TOKEN=$(HF_TOKEN) python video2.py
+
+video3:
+	HF_TOKEN=$(HF_TOKEN) python video3.py
+	
