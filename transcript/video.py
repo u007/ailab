@@ -2,7 +2,7 @@ from pydub import AudioSegment
 import io
 import os
 import openai
-import mkv_wav
+from mkv_wav import convert_mkv_to_wav
 from pyannote.audio import Pipeline
 
 pipeline = Pipeline.from_pretrained(

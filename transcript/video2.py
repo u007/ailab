@@ -2,7 +2,7 @@ from pydub import AudioSegment
 import io
 import os
 import openai
-import mkv_wav
+from mkv_wav import convert_mkv_to_wav
 from pyannote.audio import Pipeline
 
 pipeline = Pipeline.from_pretrained(
@@ -39,16 +39,18 @@ def extract_audio_chunk_to_file_object(input_file, start_time, end_time, output_
 # send pipeline to GPU (when available)
 # import torch
 # pipeline.to(torch.device("cuda"))
-video_file = "2023-10-27 12-23-12.mkv"
+video_file = "2023-10-27 13-09-28.mkv"
 audio_file = convert_mkv_to_wav(video_file, "input.wav")
 
 print("audio_file: ", audio_file)
 # apply pretrained pipeline
-diarization = pipeline(audio_file, min_speakers=2, max_speakers=5)
+diarization = pipeline(audio_file, min_speakers=3, max_speakers=5)
 
 # print the result
 for turn, _, speaker in diarization.itertracks(yield_label=True):
     print(f"start={turn.start:.1f}s stop={turn.end:.1f}s speaker_{speaker}")
+    if turn.end - turn.start < .1:
+        continue
     tmp_file = extract_audio_chunk_to_file_object(audio_file, turn.start * 1000, turn.end * 1000, "temp.wav")
     chunk_io = open(tmp_file, "rb")    
     t = openai.Audio.transcribe("whisper-1", chunk_io)

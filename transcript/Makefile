@@ -8,3 +8,6 @@ openai2:
 
 video:
 	HF_TOKEN=$(HF_TOKEN) python video.py
+
+video2:
+	HF_TOKEN=$(HF_TOKEN) python video2.py
