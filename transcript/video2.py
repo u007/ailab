@@ -46,6 +46,7 @@ print("audio_file: ", audio_file)
 # apply pretrained pipeline
 diarization = pipeline(audio_file, min_speakers=3, max_speakers=5)
 
+
 # print the result
 for turn, _, speaker in diarization.itertracks(yield_label=True):
     print(f"start={turn.start:.1f}s stop={turn.end:.1f}s speaker_{speaker}")
@@ -53,6 +54,7 @@ for turn, _, speaker in diarization.itertracks(yield_label=True):
         continue
     tmp_file = extract_audio_chunk_to_file_object(audio_file, turn.start * 1000, turn.end * 1000, "temp.wav")
     chunk_io = open(tmp_file, "rb")    
+    # t = openai.Audio.transcribe("whisper-1", chunk_io, language="en")
     t = openai.Audio.transcribe("whisper-1", chunk_io)
     text = t.text
     print(f"start={turn.start:.1f}s stop={turn.end:.1f}s speaker_{speaker}: {text}")
