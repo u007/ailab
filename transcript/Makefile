@@ -5,3 +5,6 @@ google:
 
 openai2:
 	HF_TOKEN=$(HF_TOKEN) python openai2.py
+
+video:
+	HF_TOKEN=$(HF_TOKEN) python video.py
