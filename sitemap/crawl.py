@@ -35,6 +35,9 @@ def clean_content(content):
 
 # Function to insert data into SQLite
 def insert_into_db(url, title, content, prefix, crawled=0):
+    row = get_crawler_by_url(url)
+    if row:
+        return
     print(f"insert_into_db {url}")
     cursor.execute('INSERT OR IGNORE INTO crawler (url, title, content, prefix, crawled) VALUES (?, ?, ?, ?, ?)',
                    (url, title, content, prefix, crawled))
