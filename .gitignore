@@ -167,3 +167,4 @@ gcloud.json
 out.txt
 *.json
 *.mkv
+crawler.db
