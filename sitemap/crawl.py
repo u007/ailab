@@ -95,7 +95,7 @@ def crawl(url, prefix):
     mark_as_crawled(url)
 
 # Function to export data to CSV
-def export_to_csv(database_path, query, write_file):
+def export_to_csv(query, write_file):
     # Execute the query
     cursor.execute(query)
 
@@ -120,7 +120,7 @@ def main(site):
         
         uncrawled_urls = get_uncrawled_urls(site)
 
-    export_to_csv()  # Export the data to CSV
+    export_to_csv("select * from crawlers where crawled=1 order by url asc", "result.csv")  # Export the data to CSV
 
     # Close the database connection
     conn.close()
