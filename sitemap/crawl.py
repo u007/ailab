@@ -74,9 +74,10 @@ def crawl(url, prefix):
 
     title = soup.find('title').get_text().strip() if soup.find('title') else 'No Title'
     content = clean_content(soup.find('body').get_text(separator='\n').strip() if soup.find('body') else 'No Content')
-
+    
+    print(f"crawl {url} {title} len: {len(content)}")
     # Store the crawled information in the SQLite database
-    insert_into_db(url, title, content, prefix)
+    insert_into_db(url, title, content, prefix, 0)
 
     # Recursively crawl the found links
     for link in soup.find_all('a', href=True):
