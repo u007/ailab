@@ -95,15 +95,17 @@ def crawl(url, prefix):
     mark_as_crawled(url)
 
 # Function to export data to CSV
-def export_to_csv():
-    write_file = "result.csv"
-    cursor.execute('SELECT url, title, content FROM crawler ORDER BY url')
-    rows = cursor.fetchall()
+def export_to_csv(database_path, query, write_file):
+    # Execute the query
+    cursor.execute(query)
 
     with open(write_file, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f, quoting=csv.QUOTE_ALL)
         writer.writerow(['URL', 'Title', 'Content'])  # Write headers
-        writer.writerows(rows)  # Write data rows
+
+        # Fetch and write rows one by one
+        for row in cursor:
+            writer.writerow(row)
 
 # Main function
 def main(site):
