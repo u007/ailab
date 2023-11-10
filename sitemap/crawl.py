@@ -26,6 +26,11 @@ CREATE TABLE IF NOT EXISTS crawler (
 ''')
 conn.commit()
 
+# recrawl
+# cursor.execute('''
+#                update crawler set crawled = 0
+#                ''')
+
 # Function to clean up the content
 def clean_content(content):
     content = re.sub(r'\r\n', '\n', content)  # Normalize Windows line endings
@@ -33,6 +38,10 @@ def clean_content(content):
     content = re.sub(r'\n\s*\n', '\n', content)  # Remove extra line breaks
     return content
 
+def update_crawler(url, title, content, crawled):
+    cursor.execute('UPDATE crawler SET title = ?, content = ?, crawled = ? WHERE url = ?',
+                   (title, content, crawled, url))
+    conn.commit()
 # Function to insert data into SQLite
 def insert_into_db(url, title, content, prefix, crawled=0):
     row = get_crawler_by_url(url)
@@ -41,6 +50,11 @@ def insert_into_db(url, title, content, prefix, crawled=0):
     print(f"insert_into_db {url}")
     cursor.execute('INSERT OR IGNORE INTO crawler (url, title, content, prefix, crawled) VALUES (?, ?, ?, ?, ?)',
                    (url, title, content, prefix, crawled))
+    conn.commit()
+
+def mark_as_failed(url, error):
+    print(f"mark_as_failed {url} {error}")
+    cursor.execute('UPDATE crawler SET crawled = 2 WHERE url = ?', (url,))
     conn.commit()
 
 # Function to mark URL as crawled
@@ -64,12 +78,28 @@ def crawl(url, prefix):
         print(f"skip {url}")
         return
     
+    url = url.replace('/ /', '/')
     row = get_crawler_by_url(url)
     # print(f"row {row} crawled? %s" % row['crawled'] if row else "row is None")
     if row and row['crawled'] == 1:
         return
 
-    response = requests.get(url)
+    response = None
+    max_retries = 2
+    error = None
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url)
+            break  # If the request is successful, exit the loop
+        except Exception as e:
+            print(f"Attempt {attempt + 1} of {max_retries} failed with error: {e} for url {url}")
+            error = e
+
+    if response is None:
+        mark_as_failed(url, error)
+        return
+
+    
     soup = BeautifulSoup(response.text, 'html.parser')
 
     title = soup.find('title').get_text().strip() if soup.find('title') else 'No Title'
@@ -77,7 +107,6 @@ def crawl(url, prefix):
     
     print(f"crawl {url} {title} len: {len(content)}")
     # Store the crawled information in the SQLite database
-    insert_into_db(url, title, content, prefix, 0)
 
     # Recursively crawl the found links
     for link in soup.find_all('a', href=True):
@@ -93,7 +122,7 @@ def crawl(url, prefix):
             insert_into_db(linked_url, '', '', prefix)
     # print(f"links? {soup.find_all('a', href=True)}")
     
-    mark_as_crawled(url)
+    update_crawler(url, title, content, 1)
 
 # Function to export data to CSV
 def export_to_csv(query, write_file):
