@@ -31,11 +31,32 @@ conn.commit()
 #                update crawler set crawled = 0
 #                ''')
 
+def remove_invalid_characters(input_string):
+    try:
+        # Try to encode the input string as UTF-8
+        input_string.encode('utf-8')
+        # If successful, return the original string
+        return input_string
+    except UnicodeEncodeError as e:
+        # If encoding fails, identify the problematic characters and remove them
+        problematic_characters = []
+        for char in input_string:
+            try:
+                char.encode('utf-8')
+            except UnicodeEncodeError:
+                problematic_characters.append(char)
+        
+        # Remove problematic characters from the input string
+        cleaned_string = ''.join(char for char in input_string if char not in problematic_characters)
+        return cleaned_string
+    
 # Function to clean up the content
 def clean_content(content):
     content = re.sub(r'\r\n', '\n', content)  # Normalize Windows line endings
     content = re.sub(r'\r', '\n', content)  # Replace Mac line endings with Unix line endings
     content = re.sub(r'\n\s*\n', '\n', content)  # Remove extra line breaks
+
+    content = remove_invalid_characters(content)
     return content
 
 def update_crawler(url, title, content, crawled):
@@ -64,7 +85,7 @@ def mark_as_crawled(url):
 
 # Function to get URLs not yet crawled
 def get_uncrawled_urls(prefix):
-    cursor.execute('SELECT url FROM crawler WHERE crawled = 0 AND prefix = ?', (prefix,))
+    cursor.execute('SELECT url FROM crawler WHERE crawled = 0 AND prefix = ? order by url asc limit 100', (prefix,))
     return [row['url'] for row in cursor.fetchall()]
 
 def get_crawler_by_url(url):
@@ -141,6 +162,7 @@ def export_to_csv(query, write_file):
 def main(site):
     uncrawled_urls = get_uncrawled_urls(site)
     if not uncrawled_urls:  # Start with the main site if no URLs in DB
+        print(f"new crawl {site}")
         crawl(site, site)
         
     uncrawled_urls = get_uncrawled_urls(site)
