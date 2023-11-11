@@ -168,3 +168,4 @@ out.txt
 *.json
 *.mkv
 crawler.db
+*.db-journal
