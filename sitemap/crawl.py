@@ -6,6 +6,8 @@ import re
 import sqlite3
 from dotenv import load_dotenv
 import os
+import multiprocessing
+
 
 load_dotenv()
 
@@ -84,12 +86,16 @@ def mark_as_crawled(url):
     conn.commit()
 
 # Function to get URLs not yet crawled
-def get_uncrawled_urls(prefix):
-    cursor.execute('SELECT url FROM crawler WHERE crawled = 0 AND prefix = ? order by url asc limit 100', (prefix,))
-    return [row['url'] for row in cursor.fetchall()]
+def get_uncrawled_urls():
+    cursor.execute('SELECT crawled, url FROM crawler WHERE crawled = 0 order by url asc limit 3', ())
+    res = []
+    for row in cursor.fetchall():
+        print(f"get_uncrawled_urls {row['url']} crawled: {row['crawled']}")
+        res.append(row['url'])
+    return res
 
 def get_crawler_by_url(url):
-    cursor.execute('SELECT * FROM crawler WHERE url = ?', (url,))
+    cursor.execute('SELECT crawled, url FROM crawler WHERE url = ?', (url,))
     return cursor.fetchone()
 
 # Function to crawl a webpage
@@ -102,9 +108,10 @@ def crawl(url, prefix):
     url = url.replace('/ /', '/')
     row = get_crawler_by_url(url)
     # print(f"row {row} crawled? %s" % row['crawled'] if row else "row is None")
-    if row and row['crawled'] == 1:
+    if row and row['crawled'] != 0:
+        print(f"not pending crawled {url} crawled {row['crawled']} url: {row['url']}")
         return
-
+    print(f"crawling {url}")
     response = None
     max_retries = 2
     error = None
@@ -160,19 +167,26 @@ def export_to_csv(query, write_file):
 
 # Main function
 def main(site):
-    uncrawled_urls = get_uncrawled_urls(site)
+    uncrawled_urls = get_uncrawled_urls()
     if not uncrawled_urls:  # Start with the main site if no URLs in DB
         print(f"new crawl {site}")
         crawl(site, site)
         
-    uncrawled_urls = get_uncrawled_urls(site)
+    uncrawled_urls = get_uncrawled_urls()
+    print(f"uncrawled_urls {len(uncrawled_urls)}")
     while len(uncrawled_urls) > 0:
-        for uncrawled_url in uncrawled_urls:  # Resume crawling with uncrawled URLs
-            crawl(uncrawled_url, site)
-        
-        uncrawled_urls = get_uncrawled_urls(site)
+        pool = multiprocessing.Pool()
 
-    export_to_csv("select * from crawlers where crawled=1 order by url asc", "result.csv")  # Export the data to CSV
+        # Use the pool to execute the crawl function for each URL in parallel
+        pool.starmap(crawl, [(url, site) for url in uncrawled_urls])
+        print(f"pooled {len(uncrawled_urls)}")
+        # Close the pool
+        pool.close()
+        pool.join()
+        
+        uncrawled_urls = get_uncrawled_urls()
+
+    export_to_csv("select * from crawler where crawled=1 order by url asc", "result.csv")  # Export the data to CSV
 
     # Close the database connection
     conn.close()
