@@ -62,7 +62,8 @@ def replace_url(url, new_url):
     new_crawler = get_crawler_by_url(new_url)
     if new_crawler:
         print(f"replace_url {new_url} already exists")
-        cursor.execute('DELETE FROM crawler WHERE url = ?', (url,))
+        cursor.execute('update crawler set crawled=9 WHERE url = ?', (url,))
+        conn.commit()
         return new_crawler
 
     cursor.execute('UPDATE crawler SET url = ? WHERE url = ?', (new_url, url))
