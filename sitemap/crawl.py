@@ -84,6 +84,11 @@ def update_crawler(url, title, content, crawled):
 
 # Function to insert data into SQLite
 def insert_into_db(url, title, content, prefix, crawled=0):
+    # custom ignore list
+    if 'user-signin/' in url:
+        print(f"Ignored URL: {url}")
+        return
+    
     row = get_crawler_by_url(url)
     if row:
         return
