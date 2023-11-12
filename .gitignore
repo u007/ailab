@@ -170,3 +170,4 @@ out.txt
 crawler.db
 *.db-journal
 result.csv
+*.pdf
