@@ -25,6 +25,10 @@ CREATE TABLE IF NOT EXISTS crawler (
     crawled INTEGER DEFAULT 0
 )
 ''')
+
+cursor.execute('''
+CREATE INDEX IF NOT EXISTS idx_crawled ON crawler (crawled)
+''')
 conn.commit()
 
 
@@ -104,8 +108,8 @@ def mark_as_crawled(url):
 
 # Function to get URLs not yet crawled
 def get_uncrawled_urls():
-    cursor.execute('SELECT crawled, url FROM crawler WHERE crawled = 0 order by url asc limit 5', ())
-    res = []
+    cursor.execute('SELECT crawled, url FROM crawler WHERE crawled = 0 order by url asc limit 10', ())
+    res = [] 
     for row in cursor.fetchall():
         print(f"get_uncrawled_urls {row['url']} crawled: {row['crawled']}")
         res.append(row['url'])
