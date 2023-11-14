@@ -7,6 +7,7 @@ import re
 import sqlite3
 from dotenv import load_dotenv
 import os
+import shutil
 
 load_dotenv()
 
@@ -30,6 +31,17 @@ cursor.execute('''
 CREATE INDEX IF NOT EXISTS idx_crawled ON crawler (crawled)
 ''')
 conn.commit()
+
+
+def deldir_and_mkdir(directory):
+    # Check if the directory exists
+    if os.path.exists(directory):
+        # Remove the directory and all its contents
+        shutil.rmtree(directory)
+    
+    # Create the directory
+    # os.makedirs is used to create intermediate directories if they don't exist
+    os.makedirs(directory)
 
 
 async def remove_invalid_characters(input_string):
@@ -184,17 +196,36 @@ async def crawl(url, prefix, session):
 
     update_crawler(url, title, content, 1)
 
-def export_to_csv(query, write_file):
-    # Execute the query
-    cursor.execute(query)
-
+def export_batch_csv(cursor, base_filename, counter, batch_size):
+    # Define the filename for the current chunk using the counter for suffix
+    write_file = f"output/{base_filename}-{counter}.csv"
+    
+    index = 0
     with open(write_file, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f, quoting=csv.QUOTE_ALL)
-        writer.writerow(['URL', 'Title', 'Content'])  # Write headers
-
-        # Fetch and write rows one by one
+        
+        # Write headers if it's the first file
+        writer.writerow(['URL', 'Title', 'Content'])
+        
         for row in cursor:
             writer.writerow(row)
+            index += 1
+            if index >= batch_size:
+                print("written", index)
+                return
+
+def export_to_csv(query, base_filename, total_rows):
+    batch_size = 5000
+    counter = 0
+    cursor.execute(query)
+    print("total rows", total_rows)
+    while counter * batch_size < total_rows:
+        # Fetch a chunk of data
+        # Increment the counter for each new batch
+        counter += 1
+        print("exporting index", counter, total_rows)
+        # Call the function to write the current data chunk to a CSV file
+        export_batch_csv(cursor, base_filename, counter, batch_size)
 
 async def main(site):
     uncrawled_urls = get_uncrawled_urls()
@@ -212,7 +243,12 @@ async def main(site):
         
         uncrawled_urls = get_uncrawled_urls()
 
-    export_to_csv("select * from crawler where crawled=1 order by url asc", "result.csv")
+    deldir_and_mkdir('output')
+    cursor.execute("SELECT COUNT(*) FROM crawler where crawled=1")
+    count_result = cursor.fetchone()
+    total_rows = count_result and count_result[0]
+
+    export_to_csv("select * from crawler where crawled=1 order by url asc", "result", total_rows)
     conn.close()
 
 

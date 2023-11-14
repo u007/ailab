@@ -171,3 +171,5 @@ crawler.db
 *.db-journal
 result.csv
 *.pdf
+output/
+output.zip
