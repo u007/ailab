@@ -173,3 +173,5 @@ result.csv
 *.pdf
 output/
 output.zip
+invert/white+png-inverted.png
+invert/white+png.png
