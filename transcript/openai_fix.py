@@ -2,7 +2,7 @@
 
 def generate_corrected_transcript(temperature, system_prompt, audio_file):
     response = openai.ChatCompletion.create(
-        model="gpt-4-1106-preview",
+        model="gpt-4-turbo-preview",
         temperature=temperature,
         messages=[
             {

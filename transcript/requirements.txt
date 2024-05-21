@@ -3,3 +3,4 @@ pydub==0.25.1
 google-cloud-speech==2.21.1
 openai==0.27.8
 pyannote.audio
+python-dotenv=0.21.0
