@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from pydub import AudioSegment
 import io
 import os
@@ -42,13 +45,19 @@ def extract_audio_chunk_to_file_object(input_file, start_time, end_time, output_
 audio_file = "input_K4acryty.wav"
 # apply pretrained pipeline
 diarization = pipeline(audio_file, min_speakers=3, max_speakers=5)
-
+file_obj = open("output.txt", "w")
 # print the result
 for turn, _, speaker in diarization.itertracks(yield_label=True):
     tmp_file = extract_audio_chunk_to_file_object(audio_file, turn.start * 1000, turn.end * 1000, "temp.wav")
     chunk_io = open(tmp_file, "rb")    
-    t = openai.Audio.transcribe("whisper-1", chunk_io)
+    t = openai.Audio.translate("whisper-1", chunk_io)
     text = t.text
+    if turn.end - turn.start < 1:
+        print(f"start={turn.start:.1f}s stop={turn.end:.1f}s too short")
+        continue
     print(f"start={turn.start:.1f}s stop={turn.end:.1f}s speaker_{speaker}: {text}")
+    file_obj.write(f"start={turn.start:.1f}s stop={turn.end:.1f}s speaker_{speaker}: {text}\n")
     # print(text)
     # file_obj.close()
+
+file_obj.close()
