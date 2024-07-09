@@ -165,7 +165,6 @@ compass-*.*
 
 gcloud.json
 out.txt
-*.json
 *.mkv
 crawler.db
 *.db-journal
@@ -175,3 +174,8 @@ output/
 output.zip
 invert/white+png-inverted.png
 invert/white+png.png
+node_modules/
+.history/
+*.zip
+output.txt
+movingfwd*.json
