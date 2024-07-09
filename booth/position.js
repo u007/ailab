@@ -86,6 +86,7 @@ function parseText(image, originalImage, { processWidth, outputWidth }) {
         return Number.parseInt(word.text[0], 10) >= 0;
       })
 
+      const labels = []
       for (const word of filteredWords) {
         const { text, bbox } = word;
         const scaledBBox = {
@@ -105,6 +106,14 @@ function parseText(image, originalImage, { processWidth, outputWidth }) {
         ctxOuput.lineWidth = 2;
         // ctxOuput.strokeRect(bbox.x0, bbox.y0, bbox.x1 - bbox.x0, bbox.y1 - bbox.y0);
         ctxOuput.strokeRect(scaledBBox.x0, scaledBBox.y0, scaledBBox.x1 - scaledBBox.x0, scaledBBox.y1 - scaledBBox.y0);
+
+        labels.push({
+          x: scaledBBox.x0,
+          y: scaledBBox.y0,
+          width: scaledBBox.x1 - scaledBBox.x0,
+          height: scaledBBox.y1 - scaledBBox.y0,
+          label: text,
+        })
       }
       // write canvas to output.png
       const out = fs.createWriteStream('./output.png');
@@ -112,6 +121,9 @@ function parseText(image, originalImage, { processWidth, outputWidth }) {
       stream.pipe(out);
       out.on('finish', () => console.log('The file was created.'));
       console.log('Done.');
+
+      // write labels json to file
+      fs.writeFileSync('./output.json', JSON.stringify(labels, null, 2));
     })
     .catch((err) => {
       console.error(err);
