@@ -4,3 +4,6 @@ google-cloud-speech==2.21.1
 openai==0.27.8
 pyannote.audio
 python-dotenv=0.21.0
+huggingface_hub
+torch
+openai-whisper
