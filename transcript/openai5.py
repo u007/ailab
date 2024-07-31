@@ -64,11 +64,11 @@ pipeline.to(device)
 print("using", { device })
 audio_file = "Voice.mp3"
 
-print("diaration setup")
+print("diaration setting up...")
 # apply pretrained pipeline
 diarization = pipeline(audio_file, min_speakers=2, max_speakers=4)
 # print the result
-print("starting...")
+print("processing transcript...")
 file_obj = open("output5.txt", "w")
 for turn, _, speaker in diarization.itertracks(yield_label=True):
     tmp_file = extract_audio_chunk_to_file_object(audio_file, turn.start * 1000, turn.end * 1000, "temp.wav")
