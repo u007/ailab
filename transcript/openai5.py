@@ -68,7 +68,7 @@ audio_file = "Voice.mp3"
 print("diaration setting up...")
 # apply pretrained pipeline
 start_time = time.time()
-diarization = pipeline(audio_file, min_speakers=2, max_speakers=4)
+diarization = pipeline(audio_file, min_speakers=2, max_speakers=2)
 duration = time.time() - start_time
 
 print(f"Pipeline execution took {duration:.4f} seconds.")
