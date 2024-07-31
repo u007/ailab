@@ -1,6 +1,7 @@
 from pydub import AudioSegment
-import io
 from dotenv import load_dotenv
+import time
+
 load_dotenv()
 
 import os
@@ -66,9 +67,14 @@ audio_file = "Voice.mp3"
 
 print("diaration setting up...")
 # apply pretrained pipeline
+start_time = time.time()
 diarization = pipeline(audio_file, min_speakers=2, max_speakers=4)
+duration = time.time() - start_time
+
+print(f"Pipeline execution took {duration:.4f} seconds.")
 # print the result
 print("processing transcript...")
+start_time = time.time()
 file_obj = open("output5.txt", "w")
 for turn, _, speaker in diarization.itertracks(yield_label=True):
     tmp_file = extract_audio_chunk_to_file_object(audio_file, turn.start * 1000, turn.end * 1000, "temp.wav")
@@ -83,4 +89,7 @@ for turn, _, speaker in diarization.itertracks(yield_label=True):
     # print(text)
     # file_obj.close()
 file_obj.close()
-print("done")
+
+duration = time.time() - start_time
+
+print(f"done whisper translation took {duration:.4f} seconds.")
