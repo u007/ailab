@@ -2,11 +2,16 @@
 # `pip install assemblyai` (Windows)
 
 import assemblyai as aai
-
-aai.settings.api_key = "4aa5c9989ce0499f9291b6d15223000b"
+from dotenv import load_dotenv
+load_dotenv()
+import os
+aai.settings.api_key = os.environ['ASSEMBLYAI_API_KEY']
 # transcriber = aai.Transcriber()
 transcriber = aai.Transcriber()
 
+file1 = "https://montespic.sgp1.digitaloceanspaces.com/chua/mc3.mp3"
+file2 = "https://montespic.sgp1.digitaloceanspaces.com/chua/Voice.mp3"
+file3 = "https://montespic.sgp1.digitaloceanspaces.com/chua/input_K4acryty.wav"
 
 config = aai.TranscriptionConfig(speaker_labels=True)
 
