@@ -179,3 +179,4 @@ node_modules/
 *.zip
 output.txt
 movingfwd*.json
+*.xlsx

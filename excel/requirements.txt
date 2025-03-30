@@ -1,0 +1,4 @@
+openpyxl
+xlrd==1.2.0  # For .xls support
+requests  # For downloading linked images
+beautifulsoup4  # For HTML parsing
