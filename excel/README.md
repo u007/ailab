@@ -39,6 +39,11 @@ download images from exported excel as output.html
 python download_images.py
 ```
 
+manual training
+```bash
+python train.py
+```
+
 The extracted images will be saved to the `output_images` folder in the current directory.
 
 ## How it works
