@@ -44,9 +44,12 @@ async def process_sheet(session, sheet_path):
             parsed_url = urlparse(url)
             file_name = f"image_{i+1}.jpg"
             save_path = os.path.join('output_images', folder_name, file_name)
-            
-            task = download_image(session, url, save_path)
-            tasks.append(task)
+            # Skip if file already exists
+            if not os.path.exists(save_path):
+                task = download_image(session, url, save_path)
+                tasks.append(task)
+            else:
+                print(f"Skipping {save_path}: File already exists")
         
         await asyncio.gather(*tasks)
         
