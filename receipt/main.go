@@ -82,6 +82,9 @@ func parseDate(dateStr string) (time.Time, error) {
 		"2006-01-02T15:04:05Z07:00", // RFC3339
 	}
 
+	// Add the defaultDateFormat to the beginning of the layouts slice
+	layouts = append([]string{defaultDateFormat}, layouts...)
+	
 	for _, layout := range layouts {
 		t, err := time.Parse(layout, dateStr)
 		if err == nil {
@@ -90,6 +93,8 @@ func parseDate(dateStr string) (time.Time, error) {
 	}
 	return time.Time{}, fmt.Errorf("could not parse date: %s with any known layouts", dateStr)
 }
+
+var defaultDateFormat string
 
 func main() {
 	filePath := flag.String("path", "", "Path to a file or folder to process")
@@ -105,6 +110,11 @@ func main() {
 		*apiKey = os.Getenv("GOOGLE_API_KEY")
 	}
 
+	defaultDateFormat = os.Getenv("DATE_FORMAT")
+	if defaultDateFormat == "" {
+		defaultDateFormat = "02/01/2006 15:04:05" // Default to Malaysia datetime format
+	}
+
 	if *filePath == "" {
 		log.Fatal("Please provide a path to a file or folder to process")
 	}
@@ -115,13 +125,18 @@ func main() {
 	// Handle restart option
 	processedLogFile := "processed_files.log"
 	outputCsvFile := "output.csv"
+	// Generate a unique claims cache filename based on the input path
+	claimsCacheFile := fmt.Sprintf("claims_cache_%s.csv", strings.ReplaceAll(strings.ReplaceAll(*filePath, "/", "_"), ":", "_"))
 	if *restartProcess {
-		log.Println("Restarting process: Deleting processed_files.log and output.csv")
+		log.Println("Restarting process: Deleting processed_files.log, output.csv, and claims cache")
 		if err := os.Remove(processedLogFile); err != nil && !os.IsNotExist(err) {
 			log.Printf("Warning: Could not delete processed_files.log: %v", err)
 		}
 		if err := os.Remove(outputCsvFile); err != nil && !os.IsNotExist(err) {
 			log.Printf("Warning: Could not delete output.csv: %v", err)
+		}
+		if err := os.Remove(claimsCacheFile); err != nil && !os.IsNotExist(err) {
+			log.Printf("Warning: Could not delete claims cache file %s: %v", claimsCacheFile, err)
 		}
 	}
 
@@ -135,8 +150,78 @@ func main() {
 	model := client.GenerativeModel("gemini-2.5-flash")
 
 	var claims []Claim
-	var totalTokens int64
+	var inputTokens int64
+	var outputTokens int64
 	var processedFiles, failedFiles int
+
+	// Load cached claims if the cache file exists
+	if _, err := os.Stat(claimsCacheFile); err == nil {
+		cacheFile, err := os.Open(claimsCacheFile)
+		if err != nil {
+			log.Printf("Warning: Could not open claims cache file %s: %v", claimsCacheFile, err)
+		} else {
+			reader := csv.NewReader(cacheFile)
+			// Skip header
+			if _, err := reader.Read(); err != nil {
+				log.Printf("Warning: Could not read header from claims cache file: %v", err)
+				cacheFile.Close()
+				return
+			}
+			for {
+				record, err := reader.Read()
+				if err != nil {
+					if err.Error() == "EOF" {
+						break
+					}
+					log.Printf("Warning: Error reading claims cache: %v", err)
+					break
+				}
+				if len(record) < 5 {
+					continue
+				}
+				date, err := time.Parse("2006-01-02", record[0])
+				if err != nil {
+					log.Printf("Warning: Error parsing date from cache: %v", err)
+					continue
+				}
+				amount, err := strconv.ParseFloat(record[3], 64)
+				if err != nil {
+					log.Printf("Warning: Error parsing amount from cache: %v", err)
+					continue
+				}
+				claims = append(claims, Claim{
+					Date:       date,
+					BillerName: record[1],
+					ClaimType:  record[2],
+					Amount:     amount,
+					Currency:   record[4],
+				})
+			}
+			cacheFile.Close()
+			log.Printf("Loaded %d cached claims from %s", len(claims), claimsCacheFile)
+		}
+	}
+
+	// Open claims cache file for appending
+	claimsCache, err := os.OpenFile(claimsCacheFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Printf("Warning: Failed to open claims cache file %s for writing: %v", claimsCacheFile, err)
+	} else {
+		// Write header if file is new/empty
+		stat, err := claimsCache.Stat()
+		if err != nil {
+			log.Printf("Warning: Failed to get claims cache file stat: %v", err)
+		} else if stat.Size() == 0 {
+			cacheWriter := csv.NewWriter(claimsCache)
+			cacheWriter.Write([]string{"Date", "Biller Name", "Claim Type", "Amount", "Currency"})
+			cacheWriter.Flush()
+		}
+	}
+	defer func() {
+		if claimsCache != nil {
+			claimsCache.Close()
+		}
+	}()
 
 	// Resumability: Load already processed files
 	processedFilePaths := make(map[string]bool)
@@ -185,7 +270,7 @@ func main() {
 					return nil
 				}
 
-				prompt := fmt.Sprintf("Extract the following information from the document: date, biller name, claim type, amount, and currency. If currency is not specified, default to MYR. Provide the output in JSON format with the keys: 'date', 'biller_name', 'claim_type', 'amount', 'currency'. Document content: %s", content)
+				prompt := fmt.Sprintf("Extract the following information from the document: date (defaulting to format '%s'), biller name, claim type, amount, and currency. If currency is not specified, default to MYR. Provide the output in JSON format with the keys: 'date', 'biller_name', 'claim_type', 'amount', 'currency'. Document content: %s", defaultDateFormat, content)
 
 				resp, err := callGeminiWithRetry(ctx, model, prompt, path) // Use the retry function
 				if err != nil {
@@ -195,7 +280,8 @@ func main() {
 				}
 
 				if resp.UsageMetadata != nil {
-					totalTokens += int64(resp.UsageMetadata.TotalTokenCount)
+					inputTokens += int64(resp.UsageMetadata.PromptTokenCount)
+					outputTokens += int64(resp.UsageMetadata.CandidatesTokenCount)
 				}
 
 				if len(resp.Candidates) > 0 {
@@ -245,13 +331,14 @@ func main() {
 						return nil
 					}
 
-					claims = append(claims, Claim{
+					newClaim := Claim{
 						Date:       date,
 						BillerName: billerName,
 						ClaimType:  claimType,
 						Amount:     amount,
 						Currency:   currency,
-					})
+					}
+					claims = append(claims, newClaim)
 					processedFiles++
 
 					// Mark file as processed
@@ -260,6 +347,22 @@ func main() {
 						log.Printf("Error writing to processed_files.log: %v", err)
 					}
 					processedFilePaths[path] = true // Add to in-memory map for current run
+
+					// Append new claim to cache file
+					if claimsCache != nil {
+						cacheWriter := csv.NewWriter(claimsCache)
+						cacheWriter.Write([]string{
+							newClaim.Date.Format("2006-01-02"),
+							newClaim.BillerName,
+							newClaim.ClaimType,
+							fmt.Sprintf("%.2f", newClaim.Amount),
+							newClaim.Currency,
+						})
+						cacheWriter.Flush()
+						if err := cacheWriter.Error(); err != nil {
+							log.Printf("Error writing to claims cache file: %v", err)
+						}
+					}
 				} else {
 					log.Printf("No candidates returned from Gemini API for file %s", path)
 					failedFiles++
@@ -309,7 +412,10 @@ func main() {
 	fmt.Println("\n--- Processing Summary ---")
 	fmt.Printf("Total files processed (this run): %d\n", processedFiles)
 	fmt.Printf("Total files failed (this run): %d\n", failedFiles)
-	fmt.Printf("Total token usage (this run): %d\n", totalTokens)
+	fmt.Printf("Total input tokens (this run): %d\n", inputTokens)
+	fmt.Printf("Total output tokens (this run): %d\n", outputTokens)
+	fmt.Printf("Total token usage (this run): %d\n", inputTokens + outputTokens)
 	fmt.Printf("Total files previously processed: %d\n", len(processedFilePaths)-processedFiles) // Adjust for files processed in this run
 	fmt.Println("\nProcessing complete. Output written to output.csv and processed files logged to processed_files.log")
 }
+
