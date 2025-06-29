@@ -57,6 +57,18 @@ func callGeminiWithRetry(ctx context.Context, model *genai.GenerativeModel, prom
 
 // parseDate attempts to parse a date string using multiple common layouts.
 func parseDate(dateStr string) (time.Time, error) {
+	// Remove ordinal suffixes (st, nd, rd, th) from day numbers
+	dateStr = strings.NewReplacer(
+		"st,", ",",
+		"nd,", ",",
+		"rd,", ",",
+		"th,", ",",
+		"st ", " ",
+		"nd ", " ",
+		"rd ", " ",
+		"th ", " ",
+	).Replace(dateStr)
+
 	layouts := []string{
 		"2006-01-02",         // YYYY-MM-DD
 		"January 2, 2006",    // Month Day, Year
@@ -216,18 +228,21 @@ func main() {
 					// Ensure biller_name, claim_type, currency are strings, providing defaults if necessary
 					billerName, ok := result["biller_name"].(string)
 					if !ok {
-						billerName = "UNKNOWN_BILLER"
-						log.Printf("Warning: biller_name not a string for file %s, defaulting to %s", path, billerName)
+						log.Printf("Error: biller_name not a string for file %s, skipping file", path)
+						failedFiles++
+						return nil
 					}
 					claimType, ok := result["claim_type"].(string)
 					if !ok {
-						claimType = "UNKNOWN_CLAIM_TYPE"
-						log.Printf("Warning: claim_type not a string for file %s, defaulting to %s", path, claimType)
+						log.Printf("Error: claim_type not a string for file %s, skipping file", path)
+						failedFiles++
+						return nil
 					}
 					currency, ok := result["currency"].(string)
 					if !ok {
-						currency = "MYR" // Default as per prompt
-						log.Printf("Warning: currency not a string for file %s, defaulting to %s", path, currency)
+						log.Printf("Error: currency not a string for file %s, skipping file", path)
+						failedFiles++
+						return nil
 					}
 
 					claims = append(claims, Claim{
