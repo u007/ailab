@@ -55,8 +55,8 @@ func callGeminiWithRetry(ctx context.Context, model *genai.GenerativeModel, prom
 	return nil, fmt.Errorf("failed to generate content for file %s after %d retries", filePath, maxRetries)
 }
 
-// parseDate attempts to parse a date string using multiple common layouts.
-func parseDate(dateStr string) (time.Time, error) {
+// parseDate attempts to parse a date string using multiple common layouts and a given location.
+func parseDate(dateStr string, loc *time.Location) (time.Time, error) {
 	// Remove ordinal suffixes (st, nd, rd, th) from day numbers
 	dateStr = strings.NewReplacer(
 		"st,", ",",
@@ -69,32 +69,32 @@ func parseDate(dateStr string) (time.Time, error) {
 		"th ", " ",
 	).Replace(dateStr)
 
+	// Add common date-time layouts, including one matching the Gemini prompt's requested format.
 	layouts := []string{
-		"2006-01-02",         // YYYY-MM-DD
-		"January 2, 2006",    // Month Day, Year
-		"Jan 2, 2006",        // Abbreviated Month Day, Year
-		"2 January 2006",     // Day FullMonth Year
-		"2 Jan 2006",         // Day AbbreviatedMonth Year
-		"02.01.2006",         // DD.MM.YYYY
-		"2006/01/02",         // YYYY/MM/DD
-		"01/02/2006",         // MM/DD/YYYY
-		"02/01/2006",         // DD/MM/YYYY
+		"2006-01-02 15:04:05", // YYYY-MM-DD HH:MM:SS (Added for Gemini prompt consistency)
+		"2006-01-02",          // YYYY-MM-DD
+		"January 2, 2006",     // Month Day, Year
+		"Jan 2, 2006",         // Abbreviated Month Day, Year
+		"2 January 2006",      // Day FullMonth Year
+		"2 Jan 2006",          // Day AbbreviatedMonth Year
+		"02.01.2006",          // DD.MM.YYYY
+		"2006/01/02",          // YYYY/MM/DD
+		"01/02/2006",          // MM/DD/YYYY
+		"02/01/2006",          // DD/MM/YYYY
 		"2006-01-02T15:04:05Z07:00", // RFC3339
 	}
 
-	// Add the defaultDateFormat to the beginning of the layouts slice
-	layouts = append([]string{defaultDateFormat}, layouts...)
-	
 	for _, layout := range layouts {
-		t, err := time.Parse(layout, dateStr)
+		t, err := time.ParseInLocation(layout, dateStr, loc)
 		if err == nil {
 			return t, nil
 		}
 	}
-	return time.Time{}, fmt.Errorf("could not parse date: %s with any known layouts", dateStr)
+	return time.Time{}, fmt.Errorf("could not parse date: %s with any known layouts in timezone %s", dateStr, loc.String())
 }
 
-var defaultDateFormat string
+var defaultTimeZoneStr string
+var defaultLocation *time.Location
 
 func main() {
 	filePath := flag.String("path", "", "Path to a file or folder to process")
@@ -110,16 +110,22 @@ func main() {
 		*apiKey = os.Getenv("GOOGLE_API_KEY")
 	}
 
-	defaultDateFormat = os.Getenv("DATE_FORMAT")
-	if defaultDateFormat == "" {
-		defaultDateFormat = "02/01/2006 15:04:05" // Default to Malaysia datetime format
+	defaultTimeZoneStr = os.Getenv("DATE_TIMEZONE")
+	if defaultTimeZoneStr == "" {
+		defaultTimeZoneStr = "Asia/Kuala_Lumpur" // Default to Malaysia timezone
+	}
+
+	var err error
+	defaultLocation, err = time.LoadLocation(defaultTimeZoneStr)
+	if err != nil {
+		log.Fatalf("Invalid timezone specified in DATE_TIMEZONE: %s, error: %v", defaultTimeZoneStr, err)
 	}
 
 	if *filePath == "" {
 		log.Fatal("Please provide a path to a file or folder to process")
 	}
 	if *apiKey == "" {
-		log.Fatal("Please provide a Google AI API Key via the --api-key flag or a .env file")
+		log.Fatal("Please provide a Google AI API Key via the --api-key flag or a .env file or set GOOGLE_API_KEY environment variable")
 	}
 
 	// Handle restart option
@@ -269,8 +275,9 @@ func main() {
 					failedFiles++
 					return nil
 				}
-
-				prompt := fmt.Sprintf("Extract the following information from the document: date (defaulting to format '%s'), biller name, claim type, amount, and currency. If currency is not specified, default to MYR. Provide the output in JSON format with the keys: 'date', 'biller_name', 'claim_type', 'amount', 'currency'. Document content: %s", defaultDateFormat, content)
+				
+				// Updated prompt to Gemini to specify date format and timezone for extraction
+				prompt := fmt.Sprintf("Extract the following information from the document: date, biller name, claim type, amount, and currency. For the date, provide it in 'YYYY-MM-DD HH:MM:SS' format and assume the timezone is %s. If currency is not specified, default to MYR. Provide the output in JSON format with the keys: 'date', 'biller_name', 'claim_type', 'amount', 'currency'. Document content: %s", defaultTimeZoneStr, content)
 
 				resp, err := callGeminiWithRetry(ctx, model, prompt, path) // Use the retry function
 				if err != nil {
@@ -297,7 +304,13 @@ func main() {
 						return nil
 					}
 
-					date, dateErr := parseDate(result["date"].(string)) // Use the new parseDate function
+					dateStrResult, ok := result["date"].(string)
+					if !ok {
+						log.Printf("Error: date is not a string for file %s", path)
+						failedFiles++
+						return nil
+					}
+					date, dateErr := parseDate(dateStrResult, defaultLocation)
 					if dateErr != nil {
 						log.Printf("Error parsing date for file %s: %v", path, dateErr)
 						failedFiles++
@@ -352,7 +365,7 @@ func main() {
 					if claimsCache != nil {
 						cacheWriter := csv.NewWriter(claimsCache)
 						cacheWriter.Write([]string{
-							newClaim.Date.Format("2006-01-02"),
+							newClaim.Date.In(defaultLocation).Format("2006-01-02"),
 							newClaim.BillerName,
 							newClaim.ClaimType,
 							fmt.Sprintf("%.2f", newClaim.Amount),
@@ -401,7 +414,7 @@ func main() {
 
 	for _, claim := range claims {
 		writer.Write([]string{
-			claim.Date.Format("2006-01-02"),
+			claim.Date.In(defaultLocation).Format("2006-01-02"),
 			claim.BillerName,
 			claim.ClaimType,
 			fmt.Sprintf("%.2f", claim.Amount),
