@@ -26,6 +26,7 @@ type Claim struct {
 	ClaimType  string
 	Amount     float64
 	Currency   string
+	FilePath   string // Relative path to the original file
 }
 
 // callGeminiWithRetry attempts to call the Gemini API with retries and exponential backoff.
@@ -182,10 +183,12 @@ func main() {
 					log.Printf("Warning: Error reading claims cache: %v", err)
 					break
 				}
-				if len(record) < 5 {
+				// Expecting at least 6 fields now: Date, BillerName, ClaimType, Amount, Currency, FilePath
+				if len(record) < 6 {
+					log.Printf("Warning: Malformed record in claims cache: %v", record)
 					continue
 				}
-				date, err := time.Parse("2006-01-02", record[0])
+				date, err := time.ParseInLocation("2006-01-02", record[0], defaultLocation)
 				if err != nil {
 					log.Printf("Warning: Error parsing date from cache: %v", err)
 					continue
@@ -201,6 +204,7 @@ func main() {
 					ClaimType:  record[2],
 					Amount:     amount,
 					Currency:   record[4],
+					FilePath:   record[5], // Read FilePath from cache
 				})
 			}
 			cacheFile.Close()
@@ -219,7 +223,7 @@ func main() {
 			log.Printf("Warning: Failed to get claims cache file stat: %v", err)
 		} else if stat.Size() == 0 {
 			cacheWriter := csv.NewWriter(claimsCache)
-			cacheWriter.Write([]string{"Date", "Biller Name", "Claim Type", "Amount", "Currency"})
+			cacheWriter.Write([]string{"Date", "Biller Name", "Claim Type", "Amount", "Currency", "File Path"})
 			cacheWriter.Flush()
 		}
 	}
@@ -277,6 +281,13 @@ func main() {
 				}
 				
 				// Updated prompt to Gemini to specify date format and timezone for extraction
+				// Calculate relative path
+				relPath, err := filepath.Rel(*filePath, path)
+				if err != nil {
+					log.Printf("Error calculating relative path for %s: %v", path, err)
+					relPath = path // Fallback to full path if relative fails
+				}
+
 				prompt := fmt.Sprintf("Extract the following information from the document: date, biller name, claim type, amount, and currency. For the date, provide it in 'YYYY-MM-DD HH:MM:SS' format and assume the timezone is %s. If currency is not specified, default to MYR. Provide the output in JSON format with the keys: 'date', 'biller_name', 'claim_type', 'amount', 'currency'. Document content: %s", defaultTimeZoneStr, content)
 
 				resp, err := callGeminiWithRetry(ctx, model, prompt, path) // Use the retry function
@@ -350,6 +361,7 @@ func main() {
 						ClaimType:  claimType,
 						Amount:     amount,
 						Currency:   currency,
+						FilePath:   relPath, // Store the relative path
 					}
 					claims = append(claims, newClaim)
 					processedFiles++
@@ -370,6 +382,7 @@ func main() {
 							newClaim.ClaimType,
 							fmt.Sprintf("%.2f", newClaim.Amount),
 							newClaim.Currency,
+							newClaim.FilePath, // Add FilePath to cache
 						})
 						cacheWriter.Flush()
 						if err := cacheWriter.Error(); err != nil {
@@ -409,7 +422,7 @@ func main() {
 		log.Fatalf("failed getting output.csv stat: %s", err)
 	}
 	if stat.Size() == 0 {
-		writer.Write([]string{"Date", "Biller Name", "Claim Type", "Amount", "Currency"})
+		writer.Write([]string{"Date", "Biller Name", "Claim Type", "Amount", "Currency", "File Path"})
 	}
 
 	for _, claim := range claims {
@@ -419,6 +432,7 @@ func main() {
 			claim.ClaimType,
 			fmt.Sprintf("%.2f", claim.Amount),
 			claim.Currency,
+			claim.FilePath, // Add FilePath to output
 		})
 	}
 
