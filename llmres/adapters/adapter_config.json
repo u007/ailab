@@ -5,8 +5,8 @@
     "data": "data",
     "fine_tune_type": "lora",
     "grad_checkpoint": false,
-    "iters": 10,
-    "learning_rate": 1e-05,
+    "iters": 100,
+    "learning_rate": 0.0001,
     "lora_parameters": {
         "rank": 8,
         "dropout": 0.0,
