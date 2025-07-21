@@ -21,7 +21,8 @@ def main():
         model, 
         tokenizer, 
         prompt=prompt, 
-        max_tokens=50
+        max_tokens=50,
+        verbose=False
     )
     
     # Clean up the response

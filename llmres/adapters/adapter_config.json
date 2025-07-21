@@ -2,7 +2,7 @@
     "adapter_path": "adapters",
     "batch_size": 1,
     "config": null,
-    "data": "data",
+    "data": "data/",
     "fine_tune_type": "lora",
     "grad_checkpoint": false,
     "iters": 100,
