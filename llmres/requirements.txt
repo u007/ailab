@@ -1,4 +1,10 @@
 datasets
-transformers
+transformers>=4.37.0
 torch
 accelerate
+qwen-vl-utils
+Pillow
+torchvision
+requests>=2.25.0
+huggingface-hub>=0.16.0
+pathlib
