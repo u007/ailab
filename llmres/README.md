@@ -1,12 +1,23 @@
 # LLM Fine-Tuning with MLX-LM
 
-This project demonstrates fine-tuning a Large Language Model using Apple's MLX-LM framework with LoRA (Low-Rank Adaptation) for efficient training on Apple Silicon.
+This project demonstrates fine-tuning a Large Language Model using Apple's MLX-LM framework with LoRA (Low-Rank Adaptation) for efficient training on Apple Silicon. The project now includes **resumable download functionality** for robust model and dataset downloads.
 
 ## Overview
 
 We successfully fine-tuned the `mlx-community/Qwen3-8B-8bit` model to learn custom knowledge including:
 - Capital cities of various countries
 - Custom company information ("Who started Primalcom?" → "Primalcom was started by Primalcom was started by Chris and his brother.")
+
+## 🚀 New Features
+
+### Resumable Downloads
+- **Automatic resume**: Interrupted downloads continue from where they left off
+- **Model downloads**: HuggingFace models download with built-in resume support
+- **Dataset downloads**: Custom resumable downloader for any file type
+- **Progress tracking**: Real-time progress bars and status updates
+- **Integrity verification**: Hash and size verification for downloaded files
+
+📖 **See [DOWNLOAD_GUIDE.md](DOWNLOAD_GUIDE.md) for detailed usage instructions**
 
 ## Key Findings
 
@@ -44,15 +55,56 @@ llmres/
 ├── adapters/            # Trained LoRA adapters
 │   ├── adapters.safetensors
 │   └── adapter_config.json
+├── data/                # Dataset storage
+│   ├── billboard/       # Billboard images
+│   └── gantry-samples/  # Gantry images
+├── models_cache/        # Model download cache
+├── results/             # Training outputs
 ├── Makefile             # Training and inference commands
+├── train.py             # Enhanced training script with resumable downloads
+├── download_utils.py    # Resumable download utilities
+├── download_datasets.py # Dataset downloader script
 ├── infer.py             # Python inference script
+├── DOWNLOAD_GUIDE.md    # Detailed download guide
 └── README.md            # This file
 ```
 
 ## Usage
 
+### Quick Start
+
+1. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Download datasets (optional):**
+   ```bash
+   # List available datasets
+   python download_datasets.py --list
+   
+   # Download specific dataset
+   python download_datasets.py --dataset outdoor_advertising --data-dir ./data
+   ```
+
+3. **Train the model:**
+   ```bash
+   # Enhanced training with resumable downloads
+   python train.py
+   
+   # Or use MLX-LM directly
+   make train
+   ```
+
 ### Training
 
+**Enhanced Training (Recommended):**
+```bash
+python train.py
+```
+This automatically downloads models with resume support and handles vision-language training.
+
+**MLX-LM Training:**
 ```bash
 make train
 ```
@@ -98,10 +150,15 @@ mlx_lm.generate --model mlx-community/Qwen3-8B-8bit --adapter-path adapters --pr
 - Python 3.9+
 - MLX-LM package
 - ~9GB RAM for training
+- Stable internet connection for downloads
 
 ## Installation
 
 ```bash
+# Install all dependencies
+pip install -r requirements.txt
+
+# Or install MLX-LM only
 pip install mlx-lm
 ```
 
