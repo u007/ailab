@@ -438,8 +438,8 @@ def main():
                 training_state = {
                     'step': step,
                     'epoch': epoch,
-                    'loss': float(loss),
-                    'learning_rate': optimizer.learning_rate
+                    'loss': float(loss.item()),
+                    'learning_rate': float(optimizer.learning_rate)
                 }
                 
                 with open(os.path.join(checkpoint_path, 'training_state.json'), 'w') as f:
@@ -458,17 +458,46 @@ def main():
                 batch_data = valid_data[i:i + batch_size]
                 batch = {
                     'input_ids': [item['input_ids'] for item in batch_data],
-                    'pixel_values': [item['pixel_values'] for item in batch_data],
+                    'pixel_values': None,
                     'labels': [item['labels'] for item in batch_data]
                 }
                 
+                # Handle pixel_values - collect non-None values
+                pixel_values_list = [item['pixel_values'] for item in batch_data if item['pixel_values'] is not None]
+                if pixel_values_list:
+                    # Use first available pixel_values for the batch
+                    batch['pixel_values'] = pixel_values_list[0]
+                
                 # Validation step (no gradient update)
                 input_ids = mx.array(batch['input_ids'])
-                pixel_values = mx.array(batch['pixel_values']) if batch['pixel_values'][0] is not None else None
+                pixel_values = None
+                if batch['pixel_values'] is not None:
+                    if isinstance(batch['pixel_values'], mx.array):
+                        pixel_values = batch['pixel_values']
+                    else:
+                        # Convert numpy array to MLX array
+                        pixel_values = mx.array(batch['pixel_values'])
                 labels = mx.array(batch['labels'])
                 
                 logits = model(input_ids, pixel_values)
-                loss = nn.losses.cross_entropy(logits.reshape(-1, logits.shape[-1]), labels.reshape(-1))
+                
+                # Handle sequence length mismatch due to vision tokens (same as training)
+                if pixel_values is not None:
+                    # Skip vision tokens in logits (first token is vision, rest are text)
+                    text_logits = logits[:, 1:, :]  # Skip first vision token
+                    # Ensure text_logits matches labels length
+                    seq_len = min(text_logits.shape[1], labels.shape[1] if len(labels.shape) > 1 else labels.shape[0])
+                    text_logits = text_logits[:, :seq_len, :]
+                    if len(labels.shape) == 1:
+                        target_labels = labels[:seq_len]
+                    else:
+                        target_labels = labels[:, :seq_len]
+                else:
+                    text_logits = logits
+                    target_labels = labels
+                
+                loss = nn.losses.cross_entropy(text_logits.reshape(-1, text_logits.shape[-1]), target_labels.reshape(-1))
+                loss = mx.mean(loss)
                 
                 val_loss += loss.item()
                 val_steps += 1
