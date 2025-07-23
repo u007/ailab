@@ -25,7 +25,7 @@ def test_vision_model():
         print("✓ Model and processor loaded successfully")
         
         # Test with a sample image if available
-        data_path = '/Users/james/www/ailab/llmres/data/billboard'
+        data_path = './data/billboard'
         if os.path.exists(data_path):
             sample_images = [f for f in os.listdir(data_path) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
             if sample_images:

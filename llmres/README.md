@@ -1,6 +1,18 @@
 # LLM Fine-Tuning with MLX-LM
 
-This project demonstrates fine-tuning a Large Language Model using Apple's MLX-LM framework with LoRA (Low-Rank Adaptation) for efficient training on Apple Silicon. The project now includes **resumable download functionality** for robust model and dataset downloads.
+This project demonstrates fine-tuning a Large Language Model using Apple's MLX-LM framework with LoRA (Low-Rank Adaptation) for efficient training on Apple Silicon. The project now includes **resumable download functionality** and **native MLX optimization for M1/M2/M3** training.
+
+## 🆕 MLX Native Training
+
+We've added a **native MLX implementation** (`train.py`) optimized specifically for Apple Silicon:
+
+- **🚀 M1/M2/M3 Optimized**: Native MLX framework for maximum performance
+- **💾 Memory Efficient**: Optimized for unified memory architecture
+- **⚡ Faster Training**: Leverages Neural Engine and Apple Silicon optimizations
+- **🔋 Energy Efficient**: Lower power consumption for longer training sessions
+- **📱 Vision-Language**: Supports both text and image inputs
+
+📖 **See [README_MLX.md](README_MLX.md) for detailed MLX optimization guide**
 
 ## Overview
 
@@ -73,12 +85,17 @@ llmres/
 
 ### Quick Start
 
-1. **Install dependencies:**
+1. **Check MLX compatibility:**
+   ```bash
+   python check_mlx.py
+   ```
+
+2. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-2. **Download datasets (optional):**
+3. **Download datasets (optional):**
    ```bash
    # List available datasets
    python download_datasets.py --list
@@ -87,13 +104,22 @@ llmres/
    python download_datasets.py --dataset outdoor_advertising --data-dir ./data
    ```
 
-3. **Train the model:**
+4. **Train the model:**
    ```bash
-   # Enhanced training with resumable downloads
+   # MLX Native Training (Recommended for M1/M2/M3)
    python train.py
    
    # Or use MLX-LM directly
    make train
+   ```
+
+5. **Run inference:**
+   ```bash
+   # MLX Native Inference
+   python infer_mlx.py
+   
+   # Or MLX-LM inference
+   make run
    ```
 
 ### Training

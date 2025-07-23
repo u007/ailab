@@ -1,10 +1,9 @@
 datasets
-transformers>=4.37.0
-torch
-accelerate
-qwen-vl-utils
-Pillow
-torchvision
+mlx>=0.15.0
+mlx-lm>=0.8.0
+numpy>=1.24.0
+Pillow>=9.0.0
 requests>=2.25.0
 huggingface-hub>=0.16.0
 pathlib
+safetensors>=0.4.0
