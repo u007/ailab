@@ -105,7 +105,7 @@ uv pip install parakeet-mlx fastapi uvicorn[standard] python-multipart aiofiles
 # Activate venv first
 source .venv/bin/activate
 
-# Start the server (runs on http://0.0.0.0:8000)
+# Start the server (runs on http://0.0.0.0:8181)
 python parakeet_api.py
 
 # Or use uvicorn directly with custom port
@@ -118,7 +118,7 @@ uvicorn parakeet_api:app --host 0.0.0.0 --port 8080
 Transcribe audio and return JSON results.
 
 ```bash
-curl -X POST "http://localhost:8000/transcribe" \
+curl -X POST "http://localhost:8181/transcribe" \
   -F "file=@audio.mp3" \
   -F "output_format=json"
 ```
@@ -139,13 +139,13 @@ Transcribe audio and return downloadable file.
 
 ```bash
 # Get text file with timestamps
-curl -X POST "http://localhost:8000/transcribe/file" \
+curl -X POST "http://localhost:8181/transcribe/file" \
   -F "file=@audio.mp3" \
   -F "format=txt" \
   -o transcript.txt
 
 # Get JSON file
-curl -X POST "http://localhost:8000/transcribe/file" \
+curl -X POST "http://localhost:8181/transcribe/file" \
   -F "file=@audio.mp3" \
   -F "format=json" \
   -o transcript.json
@@ -155,7 +155,7 @@ curl -X POST "http://localhost:8000/transcribe/file" \
 Check if the API is running.
 
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8181/health
 ```
 
 ### Supported Audio Formats
@@ -176,7 +176,7 @@ import requests
 
 # Transcribe and get JSON
 response = requests.post(
-    "http://localhost:8000/transcribe",
+    "http://localhost:8181/transcribe",
     files={"file": open("audio.mp3", "rb")},
     data={"output_format": "json"}
 )
@@ -185,7 +185,7 @@ print(result["text"])
 
 # Download transcript file
 response = requests.post(
-    "http://localhost:8000/transcribe/file",
+    "http://localhost:8181/transcribe/file",
     files={"file": open("audio.mp3", "rb")},
     data={"format": "txt"}
 )
