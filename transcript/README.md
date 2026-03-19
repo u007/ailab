@@ -86,6 +86,115 @@ python nemotron.py --audio input.mp3 --convert
 
 ---
 
+---
+
+## NVIDIA Parakeet TDT API
+
+FastAPI server for audio transcription with multiple format support.
+
+### Installation
+
+```bash
+# Install parakeet and API dependencies
+uv pip install parakeet-mlx fastapi uvicorn[standard] python-multipart aiofiles
+```
+
+### Running the API Server
+
+```bash
+# Activate venv first
+source .venv/bin/activate
+
+# Start the server (runs on http://0.0.0.0:8000)
+python parakeet_api.py
+
+# Or use uvicorn directly with custom port
+uvicorn parakeet_api:app --host 0.0.0.0 --port 8080
+```
+
+### API Endpoints
+
+#### POST /transcribe
+Transcribe audio and return JSON results.
+
+```bash
+curl -X POST "http://localhost:8000/transcribe" \
+  -F "file=@audio.mp3" \
+  -F "output_format=json"
+```
+
+**Response:**
+```json
+{
+  "text": "Full transcription text...",
+  "sentences": [
+    {"start": 0.0, "end": 2.5, "text": "Hello world", "confidence": 0.98}
+  ],
+  "duration": 10.5
+}
+```
+
+#### POST /transcribe/file
+Transcribe audio and return downloadable file.
+
+```bash
+# Get text file with timestamps
+curl -X POST "http://localhost:8000/transcribe/file" \
+  -F "file=@audio.mp3" \
+  -F "format=txt" \
+  -o transcript.txt
+
+# Get JSON file
+curl -X POST "http://localhost:8000/transcribe/file" \
+  -F "file=@audio.mp3" \
+  -F "format=json" \
+  -o transcript.json
+```
+
+#### GET /health
+Check if the API is running.
+
+```bash
+curl http://localhost:8000/health
+```
+
+### Supported Audio Formats
+
+- `.wav` - WAV audio
+- `.mp3` - MP3 audio
+- `.ogg` - OGG Vorbis
+- `.flac` - FLAC lossless
+- `.m4a` - MP4/AAC audio
+- `.aac` - AAC audio
+- `.wma` - Windows Media Audio
+- `.opus` - Opus codec
+
+### Python Client Example
+
+```python
+import requests
+
+# Transcribe and get JSON
+response = requests.post(
+    "http://localhost:8000/transcribe",
+    files={"file": open("audio.mp3", "rb")},
+    data={"output_format": "json"}
+)
+result = response.json()
+print(result["text"])
+
+# Download transcript file
+response = requests.post(
+    "http://localhost:8000/transcribe/file",
+    files={"file": open("audio.mp3", "rb")},
+    data={"format": "txt"}
+)
+with open("transcript.txt", "wb") as f:
+    f.write(response.content)
+```
+
+---
+
 ## Other Scripts
 
 ### Google Speech Recognition
