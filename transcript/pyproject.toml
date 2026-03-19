@@ -1,0 +1,47 @@
+[project]
+name = "transcript"
+version = "0.1.0"
+description = "Audio transcription scripts with various ASR models"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "speechrecognition>=3.10.0",
+    "pydub>=0.25.1",
+    "openai>=1.0.0",
+    "python-dotenv>=1.0.0",
+    "huggingface-hub>=0.20.0",
+    "torch>=2.0.0",
+    "openai-whisper>=20231117",
+]
+
+[project.optional-dependencies]
+parakeet = [
+    "parakeet-mlx>=0.1.0",
+]
+google = [
+    "google-cloud-speech>=2.21.0",
+]
+diarization = [
+    "pyannote.audio>=3.0.0",
+]
+nemotron = [
+    "Cython",
+    "packaging",
+]
+dev = [
+    "ruff>=0.5.0",
+]
+
+[project.scripts]
+nemotron = "nemotron:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = []
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

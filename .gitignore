@@ -180,3 +180,4 @@ node_modules/
 output.txt
 movingfwd*.json
 *.xlsx
+.webui_secret_key
