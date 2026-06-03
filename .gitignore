@@ -181,3 +181,4 @@ output.txt
 movingfwd*.json
 *.xlsx
 .webui_secret_key
+locate/.opencode/

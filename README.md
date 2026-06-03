@@ -29,3 +29,7 @@ convert portrait image to landscape
 ## sitemap
 
 generate sitemap from url by crawling
+
+## locate
+
+serve LocateAnything-3B model using Transformers
