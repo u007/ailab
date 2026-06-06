@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import binascii
 import json
@@ -30,8 +31,10 @@ class LocateAnythingBackend:
         self._processor: Any | None = None
         self._model: Any | None = None
         self._load_lock = threading.Lock()
-        self._generate_lock = threading.Lock()
         self._loaded_at: float | None = None
+        # Bounds concurrent generations (LOCATE_MAX_CONCURRENCY). Created lazily
+        # inside the running event loop on first request.
+        self._semaphore: asyncio.Semaphore | None = None
 
     @property
     def is_loaded(self) -> bool:
@@ -67,8 +70,17 @@ class LocateAnythingBackend:
             self._model.eval()
             self._loaded_at = time.time()
 
+    def _get_semaphore(self) -> asyncio.Semaphore:
+        # Safe to lazily create without a lock: the event loop is single-threaded
+        # and there is no await between the check and the assignment.
+        if self._semaphore is None:
+            self._semaphore = asyncio.Semaphore(self.settings.max_concurrency)
+        return self._semaphore
+
     async def complete(self, request: ChatCompletionRequest) -> str:
-        self.load()
+        # Load (potentially a multi-minute 3B download/init) off the event loop so
+        # the server stays responsive and Ctrl+C/SIGINT is honored on cold start.
+        await asyncio.to_thread(self.load)
         prepared = await prepare_prompt(
             request.messages,
             self.settings.request_timeout_seconds,
@@ -95,17 +107,22 @@ class LocateAnythingBackend:
             "verbose": self.settings.verbose_generation,
         }
 
-        with self._generate_lock:
-            try:
-                output = self._generate(prepared, generation_kwargs)
-            finally:
-                if self.settings.empty_cuda_cache_after_generate:
-                    empty_cuda_cache()
+        # Queue here: at most settings.max_concurrency generations run at once.
+        # The blocking generate runs in a worker thread so the event loop is free.
+        async with self._get_semaphore():
+            output = await asyncio.to_thread(self._generate_blocking, prepared, generation_kwargs)
         text = coerce_model_text(output, self._tokenizer)
         text = apply_stop_sequences(text, request.stop)
         if self.settings.log_responses:
             print(f"Raw model output: {text}", flush=True)
         return json.dumps(parse_bboxes(text))
+
+    def _generate_blocking(self, prepared: PreparedPrompt, generation_kwargs: dict[str, Any]) -> Any:
+        try:
+            return self._generate(prepared, generation_kwargs)
+        finally:
+            if self.settings.empty_cuda_cache_after_generate:
+                empty_cuda_cache()
 
     def _generate(self, prepared: PreparedPrompt, generation_kwargs: dict[str, Any]) -> Any:
         if not prepared.images:
@@ -154,6 +171,8 @@ class LocateAnythingBackend:
                 if hasattr(torch.cuda, "is_bf16_supported") and torch.cuda.is_bf16_supported():
                     return torch.bfloat16
                 return torch.float16
+            if mps_is_available(torch):
+                return torch.float16
             return torch.float32
         if not hasattr(torch, dtype):
             raise ValueError(f"Unsupported LOCATE_TORCH_DTYPE={dtype!r}")
@@ -162,7 +181,11 @@ class LocateAnythingBackend:
     def _resolve_device(self, torch: Any) -> str:
         if self.settings.device != "auto":
             return self.settings.device
-        return "cuda" if torch.cuda.is_available() else "cpu"
+        if torch.cuda.is_available():
+            return "cuda"
+        if mps_is_available(torch):
+            return "mps"
+        return "cpu"
 
 
 async def prepare_prompt(
@@ -396,5 +419,12 @@ def empty_cuda_cache() -> None:
 
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+        if mps_is_available(torch):
+            torch.mps.empty_cache()
     except Exception:
         return
+
+
+def mps_is_available(torch: Any) -> bool:
+    mps = getattr(torch.backends, "mps", None)
+    return bool(mps and mps.is_available())

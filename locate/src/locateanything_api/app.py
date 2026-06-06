@@ -7,7 +7,7 @@ import uuid
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from locateanything_api import __version__
@@ -31,6 +31,21 @@ def create_app(settings: Settings | None = None, backend: LocateAnythingBackend 
         version=__version__,
         lifespan=lifespan,
     )
+
+    @app.middleware("http")
+    async def log_requests(request: Request, call_next):
+        client = request.client.host if request.client else "-"
+        start = time.perf_counter()
+        print(f"--> {request.method} {request.url.path} from {client}", flush=True)
+        try:
+            response = await call_next(request)
+        except Exception as exc:
+            duration_ms = (time.perf_counter() - start) * 1000
+            print(f"<-- {request.method} {request.url.path} 500 {duration_ms:.1f}ms ({exc})", flush=True)
+            raise
+        duration_ms = (time.perf_counter() - start) * 1000
+        print(f"<-- {request.method} {request.url.path} {response.status_code} {duration_ms:.1f}ms", flush=True)
+        return response
 
     def get_backend() -> LocateAnythingBackend:
         return app_backend

@@ -63,3 +63,4 @@ curl -X POST "http://localhost:8282/v1/chat/completions" \
 - The model uses Hugging Face Transformers with `trust_remote_code=True`
 - Video loading requires `decord` (not available on macOS ARM64); image inference works fine without it
 - First request downloads the model (~6GB)
+- On Apple Silicon, the server prefers MPS when available; for smaller RAM machines, set `LOCATE_MAX_CONCURRENCY=1` and consider lowering `LOCATE_MAX_NEW_TOKENS`

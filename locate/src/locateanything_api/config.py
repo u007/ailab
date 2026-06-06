@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     torch_dtype: str = "auto"
     trust_remote_code: bool = True
     max_new_tokens: int = Field(default=2048, ge=1)
+    max_concurrency: int = Field(default=2, ge=1)
+    shutdown_grace_seconds: int = Field(default=30, ge=0)
     min_image_pixels: int = Field(default=0, ge=0)
     max_image_pixels: int = Field(default=1_048_576, ge=0)
     max_image_side: int = Field(default=1536, ge=0)

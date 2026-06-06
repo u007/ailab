@@ -23,6 +23,9 @@ def main() -> None:
         host=settings.host,
         port=settings.port,
         log_level=settings.log_level,
+        # Force exit if an in-flight GPU generation can't drain in time, so
+        # Ctrl+C/SIGINT never hangs the process indefinitely.
+        timeout_graceful_shutdown=settings.shutdown_grace_seconds,
     )
 
 
